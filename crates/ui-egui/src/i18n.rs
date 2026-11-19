@@ -9,9 +9,10 @@ use std::sync::OnceLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 mod ar;
+mod tr;
 
 pub struct Language {
-    /// BCP 47 code ("en", "ar").
+    /// BCP 47 code ("en", "ar", "tr").
     pub code: &'static str,
     /// The language's own name, for the picker.
     pub name: &'static str,
@@ -21,10 +22,13 @@ pub struct Language {
     pub table: &'static [(&'static str, &'static str)],
 }
 
-const COUNT: usize = 2;
+const COUNT: usize = 3;
 
-pub static LANGUAGES: [Language; COUNT] =
-    [Language { code: "en", name: "English", english: "English", table: &[] }, Language { code: "ar", name: "العربية", english: "Arabic", table: ar::TABLE }];
+pub static LANGUAGES: [Language; COUNT] = [
+    Language { code: "en", name: "English", english: "English", table: &[] },
+    Language { code: "ar", name: "العربية", english: "Arabic", table: ar::TABLE },
+    Language { code: "tr", name: "Türkçe", english: "Turkish", table: tr::TABLE },
+];
 
 static MAPS: [OnceLock<HashMap<&'static str, &'static str>>; COUNT] = [const { OnceLock::new() }; COUNT];
 static CURRENT: AtomicUsize = AtomicUsize::new(0);
@@ -115,6 +119,9 @@ mod tests {
         assert_eq!(language_for_locale("ar"), "ar");
         assert_eq!(language_for_locale("ar-EG"), "ar");
         assert_eq!(language_for_locale("ar_SA.UTF-8"), "ar");
+        assert_eq!(language_for_locale("tr"), "tr");
+        assert_eq!(language_for_locale("tr-TR"), "tr");
+        assert_eq!(language_for_locale("tr_TR.UTF-8"), "tr");
         assert_eq!(language_for_locale("en-US"), "en");
         assert_eq!(language_for_locale("fr-FR"), "en");
     }
@@ -128,8 +135,27 @@ mod tests {
     }
 
     #[test]
+    fn turkish_table_has_no_duplicate_keys() {
+        let mut seen = std::collections::HashSet::new();
+        for (k, _) in tr::TABLE {
+            assert!(seen.insert(*k), "duplicate key in tr::TABLE: {k:?}");
+        }
+    }
+
+    #[test]
     fn placeholders_match_between_key_and_arabic_translation() {
         for (k, v) in ar::TABLE {
+            let mut kp: Vec<&str> = k.split('{').skip(1).filter_map(|s| s.split_once('}').map(|(p, _)| p)).collect();
+            let mut vp: Vec<&str> = v.split('{').skip(1).filter_map(|s| s.split_once('}').map(|(p, _)| p)).collect();
+            kp.sort();
+            vp.sort();
+            assert_eq!(kp, vp, "mismatched placeholders in {k:?} vs {v:?}");
+        }
+    }
+
+    #[test]
+    fn placeholders_match_between_key_and_turkish_translation() {
+        for (k, v) in tr::TABLE {
             let mut kp: Vec<&str> = k.split('{').skip(1).filter_map(|s| s.split_once('}').map(|(p, _)| p)).collect();
             let mut vp: Vec<&str> = v.split('{').skip(1).filter_map(|s| s.split_once('}').map(|(p, _)| p)).collect();
             kp.sort();
