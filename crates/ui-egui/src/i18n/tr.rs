@@ -370,6 +370,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("Length", "Uzunluk"),
     ("Library", "Kütüphane"),
     ("Library preview cache", "Kütüphane önizleme önbelleği"),
+    ("brightness.light", "Açık"),
     ("Light", "Işık"),
     ("Light: drag to move the first point light, which switches it on (L)", "Işık: İlk nokta ışığı taşımak için sürükleyin; bu işlem ışığı açar (L)"),
     ("Lights", "Işıklar"),

@@ -63,6 +63,19 @@ pub fn tr(text: &str) -> &str {
     map.get_or_init(|| lang.table.iter().copied().collect()).get(text).copied().unwrap_or(text)
 }
 
+/// Translate `english` with a disambiguating `key` (for homographs like `"Light"` the theme vs
+/// `"Light"` the 3D illumination toggle). Falls back to `tr(english)` when a catalog has no
+/// context-specific row, and returns `english` unchanged in English.
+pub fn tr_ctx<'a>(key: &str, english: &'a str) -> &'a str {
+    let i = CURRENT.load(Ordering::Relaxed);
+    let (Some(lang), Some(map)) = (LANGUAGES.get(i), MAPS.get(i)) else { return english };
+    if lang.table.is_empty() {
+        return english;
+    }
+    let table = map.get_or_init(|| lang.table.iter().copied().collect());
+    table.get(key).or_else(|| table.get(english)).copied().unwrap_or(english)
+}
+
 /// Marks a static string for translation where it is defined (gettext's `N_`); it is translated
 /// with [`tr`] where it is shown. The key test collects both.
 pub const fn n_(text: &'static str) -> &'static str {
@@ -162,5 +175,16 @@ mod tests {
             vp.sort();
             assert_eq!(kp, vp, "mismatched placeholders in {k:?} vs {v:?}");
         }
+    }
+
+    #[test]
+    fn brightness_light_and_3d_light_stay_distinct_in_turkish() {
+        set_language("tr");
+        assert_eq!(tr_ctx("brightness.light", "Light"), "Açık");
+        assert_eq!(tr("Light"), "Işık");
+        set_language("ar");
+        assert_eq!(tr_ctx("brightness.light", "Light"), "فاتح");
+        set_language("en");
+        assert_eq!(tr_ctx("brightness.light", "Light"), "Light");
     }
 }
